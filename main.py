@@ -5,14 +5,15 @@ import asyncio
 import random
 from telethon import TelegramClient, events
 
-# ====== НАСТРОЙКИ ЧЕРЕЗ RAILWAY VARIABLES ======
+# ====== НАСТРОЙКИ ИЗ RAILWAY ======
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
+OWNER_ID = int(os.getenv("OWNER_ID"))  # твой Telegram ID
 
 AUTO_REPLY_TEXT = (
     "👋 Привет!\n\n"
     "🚨 ВНИМАНИЕ!\n\n"
-    "Чтобы получить свою голду, выполни всего три простых шага:\n\n"
+    "Чтобы получить свою голду, выполни всего два простых шага:\n\n"
     "1️⃣ Сделай скриншот своего инвентаря и отправь его мне 💎\n\n"
     "2️⃣ Дождись своей очереди — я тебе наберу ✔️\n\n"
     "3️⃣ Обязательно оставь отзыв под стримчиком 💎\n\n"
@@ -24,11 +25,11 @@ AUTO_REPLY_TEXT = (
 
 RESET_DAYS = 7
 
-# ====== ФАЙЛЫ РЯДОМ СО СКРИПТОМ ======
+# ====== ФАЙЛЫ ======
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "answered.json")
 
-# ====== РАБОТА С ДАННЫМИ ======
+# ====== ДАННЫЕ ======
 def load_data():
     if not os.path.exists(DATA_FILE):
         return {"users": [], "last_reset": time.time()}
@@ -41,11 +42,14 @@ def save_data(data):
 
 data = load_data()
 
+def reset_users():
+    data["users"] = []
+    data["last_reset"] = time.time()
+    save_data(data)
+
 def check_reset():
     if time.time() - data["last_reset"] >= RESET_DAYS * 86400:
-        data["users"] = []
-        data["last_reset"] = time.time()
-        save_data(data)
+        reset_users()
 
 # ====== TELEGRAM ======
 client = TelegramClient("session", api_id, api_hash)
@@ -55,12 +59,18 @@ async def handler(event):
     if not event.is_private:
         return
 
+    # 🔑 Команда сброса (только от владельца)
+    if event.sender_id == OWNER_ID and event.raw_text.strip() == "!reset":
+        reset_users()
+        await event.reply("✅ Список пользователей очищен")
+        return
+
     check_reset()
 
     if event.sender_id in data["users"]:
         return
 
-    # задержка, чтобы выглядело как человек
+    # ⏳ Задержка как у живого человека
     delay = random.randint(2, 5)
     await asyncio.sleep(delay)
 
