@@ -58,7 +58,7 @@ def format_time(ts):
 # ====== TELEGRAM ======
 client = TelegramClient("session", api_id, api_hash)
 
-@client.on(events.NewMessage(incoming=True))
+@client.on(events.NewMessage())
 async def handler(event):
     if not event.is_private:
         return
@@ -105,3 +105,4 @@ async def handler(event):
 client.start()
 print("running")
 client.run_until_disconnected()
+
