@@ -3,6 +3,7 @@ import os
 import time
 import asyncio
 import random
+from datetime import datetime
 from telethon import TelegramClient, events
 
 # ====== НАСТРОЙКИ ИЗ RAILWAY ======
@@ -13,7 +14,7 @@ OWNER_ID = int(os.getenv("OWNER_ID"))  # твой Telegram ID
 AUTO_REPLY_TEXT = (
     "👋 Привет!\n\n"
     "🚨 ВНИМАНИЕ!\n\n"
-    "Чтобы получить свою голду, выполни всего два простых шага:\n\n"
+    "Чтобы получить свою голду, выполни всего три простых шага:\n\n"
     "1️⃣ Сделай скриншот своего инвентаря и отправь его мне 💎\n\n"
     "2️⃣ Дождись своей очереди — я тебе наберу ✔️\n\n"
     "3️⃣ Обязательно оставь отзыв под стримчиком 💎\n\n"
@@ -51,6 +52,9 @@ def check_reset():
     if time.time() - data["last_reset"] >= RESET_DAYS * 86400:
         reset_users()
 
+def format_time(ts):
+    return datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M")
+
 # ====== TELEGRAM ======
 client = TelegramClient("session", api_id, api_hash)
 
@@ -59,10 +63,29 @@ async def handler(event):
     if not event.is_private:
         return
 
-    # 🔑 Команда сброса (только от владельца)
-    if event.sender_id == OWNER_ID and event.raw_text.strip() == "!reset":
+    text = event.raw_text.strip()
+
+    # 🔑 Команда сброса
+    if event.sender_id == OWNER_ID and text == "!reset":
         reset_users()
         await event.reply("✅ Список пользователей очищен")
+        return
+
+    # 📊 Команда статуса
+    if event.sender_id == OWNER_ID and text == "!status":
+        total = len(data["users"])
+        last_reset = format_time(data["last_reset"])
+        next_reset_sec = max(
+            0, RESET_DAYS * 86400 - (time.time() - data["last_reset"])
+        )
+        days_left = round(next_reset_sec / 86400, 2)
+
+        await event.reply(
+            "📊 **Статус автоответчика**\n\n"
+            f"👥 Пользователей в списке: **{total}**\n"
+            f"🔄 Последний сброс: **{last_reset}**\n"
+            f"⏳ До авто-сброса: **{days_left} дней**"
+        )
         return
 
     check_reset()
